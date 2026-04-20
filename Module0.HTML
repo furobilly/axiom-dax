@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AXIOM — Módulo 0: El Despertar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:ital,wght@0,300;0,400;0,600;1,300&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0D0D1A;--panel:#1A1A2E;--panel2:#12122A;
+      --gold:#F2C94C;--cyan:#00D4FF;--red:#FF4D6D;
+      --green:#00F5A0;--purple:#A855F7;--text:#E8E8F0;--dim:#7777AA;
+    }
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+    body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;min-height:100vh;overflow-x:hidden;}
+    body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.025) 2px,rgba(0,0,0,.025) 4px);pointer-events:none;z-index:9999;}
+    canvas#bg{position:fixed;inset:0;z-index:0;pointer-events:none;}
+
+    /* ── Layout ── */
+    .game-layout{
+      display:grid;
+      grid-template-columns:1fr 240px;
+      grid-template-rows:auto 1fr;
+      min-height:100vh;
+      position:relative;z-index:10;
+    }
+
+    /* ── HUD Top bar ── */
+    .hud-top{
+      grid-column:1/-1;
+      display:flex;align-items:center;justify-content:space-between;
+      padding:.6rem 1.4rem;
+      background:rgba(13,13,26,.92);
+      border-bottom:1px solid rgba(242,201,76,.12);
+      backdrop-filter:blur(8px);
+      position:sticky;top:0;z-index:100;
+    }
+    .hud-left{display:flex;align-items:center;gap:1.2rem;}
+    .hud-logo{font-family:'Orbitron',monospace;font-size:.8rem;letter-spacing:.3em;color:var(--gold);}
+    .hud-mod{font-size:.72rem;color:var(--cyan);letter-spacing:.15em;}
+    .hud-stats{display:flex;gap:.8rem;align-items:center;}
+    .stat-chip{
+      display:flex;align-items:center;gap:.35rem;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      padding:.25rem .7rem;font-size:.78rem;
+    }
+    .stat-chip .val{color:var(--gold);font-family:'Orbitron',monospace;font-weight:700;font-size:.82rem;}
+    .lives{display:flex;gap:.25rem;}
+    .heart{font-size:1rem;transition:all .3s;}
+    .heart.lost{opacity:.2;filter:grayscale(1);}
+    .hud-right{display:flex;gap:.5rem;}
+    .icon-btn{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:var(--dim);padding:.3rem .6rem;cursor:pointer;font-size:.82rem;transition:all .3s;}
+    .icon-btn:hover{color:var(--text);border-color:rgba(255,255,255,.25);}
+
+    /* ── Progress bar ── */
+    .progress-wrap{grid-column:1/-1;padding:.5rem 1.4rem;background:rgba(13,13,26,.7);}
+    .progress-track{height:4px;background:rgba(255,255,255,.06);position:relative;overflow:visible;}
+    .progress-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--gold));transition:width .6s ease;position:relative;}
+    .progress-fill::after{content:'';position:absolute;right:-1px;top:-3px;width:10px;height:10px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold);}
+    .progress-dots{display:flex;justify-content:space-between;margin-top:.4rem;}
+    .pdot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.1);transition:all .3s;cursor:default;}
+    .pdot.done{background:var(--green);border-color:var(--green);box-shadow:0 0 6px var(--green);}
+    .pdot.current{background:var(--gold);border-color:var(--gold);box-shadow:0 0 8px var(--gold);animation:pulse .8s infinite;}
+    .pdot.boss{background:rgba(255,77,109,.2);border-color:var(--red);}
+    .pdot.boss.current{background:var(--red);box-shadow:0 0 10px var(--red);}
+    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.3)}}
+
+    /* ── Exercise area ── */
+    .exercise-area{
+      padding:2rem 1.8rem 2rem 2rem;
+      display:flex;flex-direction:column;
+      min-height:calc(100vh - 120px);
+    }
+
+    .ex-header{margin-bottom:1.4rem;}
+    .ex-num{font-size:.7rem;letter-spacing:.25em;color:var(--dim);margin-bottom:.4rem;}
+    .ex-question{
+      font-size:clamp(1rem,2.5vw,1.15rem);
+      line-height:1.65;color:var(--text);
+      font-weight:400;
+    }
+    .ex-question code{
+      font-family:'Fira Code',monospace;
+      background:rgba(0,212,255,.1);
+      color:var(--cyan);padding:.1rem .4rem;
+      font-size:.88em;
+    }
+    .ex-context{
+      margin-top:.9rem;
+      background:rgba(0,0,0,.25);
+      border-left:3px solid var(--purple);
+      padding:.7rem 1rem;
+      font-size:.84rem;color:var(--dim);
+      line-height:1.65;
+      font-style:italic;
+    }
+
+    /* ── Multiple choice ── */
+    .choices{display:flex;flex-direction:column;gap:.65rem;margin-top:1.4rem;}
+    .choice{
+      display:flex;align-items:flex-start;gap:.9rem;
+      padding:.9rem 1.1rem;
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.08);
+      cursor:pointer;transition:all .25s;
+      font-size:.9rem;line-height:1.55;
+    }
+    .choice:hover{background:rgba(0,212,255,.06);border-color:rgba(0,212,255,.3);}
+    .choice.selected{background:rgba(0,212,255,.08);border-color:var(--cyan);}
+    .choice.correct{background:rgba(0,245,160,.1);border-color:var(--green);pointer-events:none;}
+    .choice.wrong{background:rgba(255,77,109,.08);border-color:var(--red);pointer-events:none;}
+    .choice.disabled{pointer-events:none;opacity:.5;}
+    .choice-letter{
+      font-family:'Orbitron',monospace;font-size:.7rem;
+      width:24px;height:24px;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;
+      border:1px solid rgba(255,255,255,.15);color:var(--dim);
+      transition:all .25s;
+    }
+    .choice.selected .choice-letter{border-color:var(--cyan);color:var(--cyan);}
+    .choice.correct .choice-letter{border-color:var(--green);color:var(--green);background:rgba(0,245,160,.15);}
+    .choice.wrong .choice-letter{border-color:var(--red);color:var(--red);}
+    .choice-text code{font-family:'Fira Code',monospace;background:rgba(0,212,255,.1);color:var(--cyan);padding:.05rem .3rem;font-size:.88em;}
+
+    /* ── DAX Editor ── */
+    .dax-editor-wrap{margin-top:1.2rem;position:relative;}
+    .dax-label{font-size:.72rem;letter-spacing:.2em;color:var(--cyan);margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem;}
+    .dax-label::before{content:'';width:8px;height:8px;background:var(--cyan);border-radius:50%;}
+    .dax-editor-box{
+      position:relative;
+      background:#0A0A18;
+      border:1px solid rgba(0,212,255,.25);
+      overflow:hidden;
+    }
+    .dax-editor-box:focus-within{border-color:var(--cyan);box-shadow:0 0 16px rgba(0,212,255,.1);}
+    .dax-topbar{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:.4rem .8rem;
+      background:rgba(0,212,255,.05);
+      border-bottom:1px solid rgba(0,212,255,.12);
+    }
+    .dax-title{font-family:'Fira Code',monospace;font-size:.72rem;color:var(--dim);}
+    .dax-dots{display:flex;gap:.4rem;}
+    .dax-dot{width:8px;height:8px;border-radius:50%;}
+    .editor-inner{display:flex;}
+    .line-nums{
+      padding:.8rem .6rem;
+      font-family:'Fira Code',monospace;font-size:.82rem;
+      color:rgba(255,255,255,.2);line-height:1.7;
+      background:rgba(0,0,0,.2);
+      border-right:1px solid rgba(255,255,255,.06);
+      min-width:36px;text-align:right;
+      user-select:none;
+    }
+    .dax-textarea{
+      flex:1;padding:.8rem;
+      font-family:'Fira Code',monospace;font-size:.88rem;
+      line-height:1.7;color:var(--text);
+      background:transparent;border:none;outline:none;
+      resize:none;min-height:100px;
+      caret-color:var(--cyan);
+    }
+    .dax-feedback{
+      padding:.5rem .9rem;
+      font-size:.78rem;line-height:1.5;
+      border-top:1px solid rgba(255,255,255,.06);
+      min-height:2.2rem;display:flex;align-items:center;gap:.5rem;
+    }
+    .dax-feedback.ok{color:var(--green);background:rgba(0,245,160,.05);}
+    .dax-feedback.err{color:var(--red);background:rgba(255,77,109,.05);}
+    .dax-feedback.hint{color:var(--gold);background:rgba(242,201,76,.05);}
+    /* Syntax highlight colors in textarea are limited — we use overlay */
+    .keyword{color:#C792EA;}
+    .func{color:#82AAFF;}
+    .string{color:#C3E88D;}
+    .number{color:#F78C6C;}
+
+    /* ── Result table ── */
+    .result-table{
+      margin-top:1rem;
+      border:1px solid rgba(0,245,160,.2);
+      overflow:hidden;animation:tableIn .4s ease;
+    }
+    @keyframes tableIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .result-table table{width:100%;border-collapse:collapse;font-size:.8rem;}
+    .result-table th{
+      background:rgba(0,245,160,.1);color:var(--green);
+      padding:.5rem .8rem;text-align:left;
+      font-family:'Orbitron',monospace;font-size:.68rem;letter-spacing:.1em;
+    }
+    .result-table td{
+      padding:.45rem .8rem;border-top:1px solid rgba(255,255,255,.04);
+      font-family:'Fira Code',monospace;
+    }
+    .result-table tr:hover td{background:rgba(0,245,160,.03);}
+
+    /* ── Drag & Drop ── */
+    .drag-area{margin-top:1.2rem;}
+    .drag-label{font-size:.72rem;letter-spacing:.15em;color:var(--dim);margin-bottom:.6rem;}
+    .drag-blocks{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.2rem;min-height:44px;padding:.5rem;background:rgba(0,0,0,.15);border:1px dashed rgba(255,255,255,.1);}
+    .drag-block{
+      font-family:'Fira Code',monospace;font-size:.8rem;
+      padding:.35rem .7rem;background:rgba(168,85,247,.15);
+      border:1px solid rgba(168,85,247,.35);color:var(--purple);
+      cursor:grab;user-select:none;transition:all .2s;
+    }
+    .drag-block:hover{background:rgba(168,85,247,.25);transform:translateY(-2px);}
+    .drag-block.dragging{opacity:.4;}
+    .drop-slots{display:flex;flex-direction:column;gap:.5rem;}
+    .drop-slot{
+      min-height:42px;padding:.4rem .6rem;
+      background:rgba(0,0,0,.2);
+      border:1px dashed rgba(0,212,255,.2);
+      display:flex;align-items:center;gap:.5rem;
+      font-size:.75rem;color:var(--dim);
+      transition:all .2s;
+    }
+    .drop-slot.drag-over{border-color:var(--cyan);background:rgba(0,212,255,.06);}
+    .drop-slot.filled{border-style:solid;border-color:rgba(168,85,247,.4);color:var(--purple);}
+    .drop-slot .slot-num{font-family:'Orbitron',monospace;font-size:.65rem;color:var(--dim);min-width:18px;}
+    .drop-slot .slot-content{font-family:'Fira Code',monospace;font-size:.82rem;}
+
+    /* ── Action row ── */
+    .action-row{display:flex;gap:.8rem;margin-top:1.4rem;align-items:center;flex-wrap:wrap;}
+    .btn-submit{
+      font-family:'Orbitron',monospace;font-size:.78rem;letter-spacing:.2em;
+      padding:.75rem 1.8rem;background:var(--cyan);border:none;
+      color:#0D0D1A;cursor:pointer;transition:all .3s;
+      display:flex;align-items:center;gap:.5rem;
+    }
+    .btn-submit:hover{background:#33DDFF;box-shadow:0 0 20px rgba(0,212,255,.4);}
+    .btn-submit:disabled{opacity:.4;pointer-events:none;}
+    .btn-skip{
+      font-size:.75rem;background:transparent;border:1px solid rgba(255,255,255,.1);
+      color:var(--dim);padding:.5rem 1rem;cursor:pointer;transition:all .3s;
+    }
+    .btn-skip:hover{color:var(--text);border-color:rgba(255,255,255,.25);}
+
+    /* ── VERA sidebar ── */
+    .vera-sidebar{
+      background:rgba(13,13,26,.7);
+      border-left:1px solid rgba(242,201,76,.08);
+      padding:1.4rem 1rem;
+      display:flex;flex-direction:column;align-items:center;
+      gap:.8rem;
+      position:sticky;top:60px;
+      height:calc(100vh - 60px);
+      overflow-y:auto;
+    }
+    .vera-fig-sm{width:130px;height:180px;filter:drop-shadow(0 0 8px rgba(0,212,255,.45));animation:holoFlick 8s infinite;}
+    @keyframes holoFlick{0%,100%{opacity:1}5%{opacity:.65}10%{opacity:1}15%{opacity:.35}20%{opacity:1}88%{opacity:1}92%{opacity:.6}96%{opacity:1}}
+    .vera-glow{width:100px;height:10px;background:radial-gradient(ellipse,rgba(0,212,255,.4) 0%,transparent 70%);filter:blur(3px);animation:pulse2 2s infinite;}
+    @keyframes pulse2{0%,100%{opacity:.5}50%{opacity:1}}
+    .vera-name-sm{font-family:'Orbitron',monospace;font-size:.65rem;letter-spacing:.25em;color:var(--cyan);}
+    .vera-bubble-sm{
+      background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);
+      padding:.6rem .8rem;font-size:.76rem;font-style:italic;
+      color:var(--cyan);line-height:1.6;width:100%;
+    }
+    .vera-reaction{font-size:1.6rem;text-align:center;min-height:2rem;}
+    .sidebar-stats{width:100%;display:flex;flex-direction:column;gap:.5rem;margin-top:.5rem;}
+    .ss-row{
+      display:flex;justify-content:space-between;align-items:center;
+      font-size:.75rem;padding:.4rem .6rem;
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.06);
+    }
+    .ss-label{color:var(--dim);}
+    .ss-val{font-family:'Orbitron',monospace;font-size:.78rem;color:var(--gold);}
+    .tw-cursor{display:inline-block;width:2px;height:.8em;background:var(--cyan);vertical-align:middle;animation:blink .6s infinite;}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+    /* ── XP reward popup ── */
+    .xp-pop{
+      position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+      z-index:500;text-align:center;pointer-events:none;
+      animation:xpAnim .8s ease forwards;
+    }
+    @keyframes xpAnim{
+      0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}
+      40%{opacity:1;transform:translate(-50%,-70%) scale(1.2)}
+      100%{opacity:0;transform:translate(-50%,-110%) scale(1)}
+    }
+    .xp-pop .xp-num{font-family:'Orbitron',monospace;font-size:2rem;font-weight:900;color:var(--gold);text-shadow:0 0 20px var(--gold);}
+    .xp-pop .xp-lbl{font-size:.8rem;color:var(--gold);letter-spacing:.2em;}
+
+    /* ── Boss Battle ── */
+    .boss-screen{
+      display:none;position:fixed;inset:0;z-index:300;
+      background:rgba(0,0,0,.92);
+      flex-direction:column;align-items:center;justify-content:center;
+      backdrop-filter:blur(8px);
+    }
+    .boss-screen.show{display:flex;}
+    .boss-title{
+      font-family:'Orbitron',monospace;font-size:clamp(1.5rem,5vw,2.5rem);
+      color:var(--red);letter-spacing:.15em;text-shadow:0 0 30px rgba(255,77,109,.6);
+      animation:glitch 4s infinite;
+    }
+    @keyframes glitch{
+      0%,90%,100%{transform:none;filter:none}
+      91%{transform:translate(-3px,0);filter:drop-shadow(-3px 0 var(--cyan))}
+      92%{transform:translate(3px,0);filter:drop-shadow(3px 0 var(--red))}
+      93%{transform:none;filter:none}
+    }
+    .boss-sub{color:var(--dim);font-size:.85rem;letter-spacing:.2em;margin:.5rem 0 1.5rem;}
+    .boss-bars{width:90%;max-width:500px;display:flex;flex-direction:column;gap:.8rem;margin:1rem 0;}
+    .bar-wrap{display:flex;align-items:center;gap:.8rem;font-size:.78rem;}
+    .bar-label{width:80px;text-align:right;}
+    .bar-track{flex:1;height:12px;background:rgba(255,255,255,.06);overflow:hidden;}
+    .bar-fill{height:100%;transition:width .5s ease;}
+    .bar-fill.boss-hp{background:linear-gradient(90deg,var(--red),#FF8C00);}
+    .bar-fill.player-hp{background:linear-gradient(90deg,var(--green),var(--cyan));}
+    .boss-content{width:90%;max-width:680px;}
+    .boss-q{
+      font-size:clamp(.9rem,2vw,1.05rem);
+      color:var(--text);line-height:1.7;
+      background:rgba(255,77,109,.05);
+      border:1px solid rgba(255,77,109,.2);
+      border-left:3px solid var(--red);
+      padding:1rem 1.2rem;margin:1rem 0;
+    }
+    .boss-choices{display:flex;flex-direction:column;gap:.5rem;}
+    .boss-choice{
+      padding:.75rem 1rem;
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.06);
+      cursor:pointer;transition:all .25s;font-size:.88rem;
+      display:flex;align-items:center;gap:.8rem;
+    }
+    .boss-choice:hover{border-color:var(--red);background:rgba(255,77,109,.06);}
+    .boss-choice.correct{border-color:var(--green);background:rgba(0,245,160,.08);pointer-events:none;}
+    .boss-choice.wrong{border-color:var(--red);background:rgba(255,77,109,.1);pointer-events:none;}
+
+    /* ── Victory screen ── */
+    .victory-screen{
+      display:none;position:fixed;inset:0;z-index:400;
+      background:rgba(0,0,0,.9);
+      flex-direction:column;align-items:center;justify-content:center;
+      gap:1.2rem;backdrop-filter:blur(8px);
+    }
+    .victory-screen.show{display:flex;animation:fadeUp .6s ease;}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+    .vic-title{font-family:'Orbitron',monospace;font-size:clamp(1.8rem,5vw,3rem);color:var(--gold);letter-spacing:.15em;text-shadow:0 0 40px rgba(242,201,76,.5);}
+    .vic-sub{color:var(--cyan);letter-spacing:.25em;font-size:.85rem;}
+    .vic-rewards{display:flex;gap:1.5rem;margin:1rem 0;}
+    .vic-reward{text-align:center;padding:1rem 1.5rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);}
+    .vic-reward .r-val{font-family:'Orbitron',monospace;font-size:1.8rem;color:var(--gold);}
+    .vic-reward .r-lbl{font-size:.7rem;color:var(--dim);margin-top:.3rem;letter-spacing:.15em;}
+    .btn-vic{
+      font-family:'Orbitron',monospace;font-size:.85rem;letter-spacing:.2em;
+      padding:1rem 2.5rem;background:var(--gold);border:none;
+      color:#0D0D1A;cursor:pointer;margin-top:.5rem;transition:all .3s;
+    }
+    .btn-vic:hover{box-shadow:0 0 30px rgba(242,201,76,.4);}
+
+    /* ── Toast ── */
+    .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(60px);z-index:600;background:var(--panel);border:1px solid var(--cyan);padding:.7rem 1.4rem;font-size:.82rem;color:var(--cyan);transition:all .4s;opacity:0;white-space:nowrap;}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    @media(max-width:768px){
+      .game-layout{grid-template-columns:1fr;}
+      .vera-sidebar{display:none;}
+      .exercise-area{padding:1.2rem;}
+    }
+  </style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<!-- ── GAME LAYOUT ── -->
+<div class="game-layout">
+
+  <!-- HUD Top -->
+  <div class="hud-top">
+    <div class="hud-left">
+      <div class="hud-logo">AXIOM</div>
+      <div class="hud-mod" id="hudMod">MÓDULO 0 — EL DESPERTAR</div>
+    </div>
+    <div class="hud-stats">
+      <div class="stat-chip">⭐ XP <span class="val" id="hudXP">0</span></div>
+      <div class="stat-chip">🔷 <span class="val" id="hudDB">0</span></div>
+      <div class="stat-chip">🔥 <span class="val" id="hudStreak">0</span></div>
+      <div class="lives" id="hudLives">
+        <span class="heart">❤️</span><span class="heart">❤️</span><span class="heart">❤️</span>
+      </div>
+    </div>
+    <div class="hud-right">
+      <button class="icon-btn" onclick="toggleTheme()">🌙</button>
+      <button class="icon-btn" onclick="exitToMap()">← Mapa</button>
+    </div>
+  </div>
+
+  <!-- Progress bar -->
+  <div class="progress-wrap">
+    <div class="progress-track">
+      <div class="progress-fill" id="progFill" style="width:0%"></div>
+    </div>
+    <div class="progress-dots" id="progDots"></div>
+  </div>
+
+  <!-- Exercise area -->
+  <div class="exercise-area" id="exArea">
+    <!-- Populated by JS -->
+  </div>
+
+  <!-- VERA Sidebar -->
+  <div class="vera-sidebar">
+    <div style="position:relative">
+      <svg class="vera-fig-sm" viewBox="0 0 200 320" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="vs" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#A8DCEE"/><stop offset="100%" stop-color="#6ABED8"/></linearGradient>
+          <linearGradient id="vst" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0C3850"/><stop offset="100%" stop-color="#041520"/></linearGradient>
+          <filter id="vg"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <path d="M48 320 Q48 228 58 210 Q72 196 100 192 Q128 196 142 210 Q152 228 152 320Z" fill="url(#vst)"/>
+        <path d="M70 212 L100 228 L130 212" stroke="#00D4FF" stroke-width="1.8" fill="none" stroke-linecap="round" filter="url(#vg)"/>
+        <line x1="84" y1="228" x2="84" y2="320" stroke="#00D4FF" stroke-width=".7" opacity=".28"/>
+        <line x1="116" y1="228" x2="116" y2="320" stroke="#00D4FF" stroke-width=".7" opacity=".28"/>
+        <rect x="80" y="240" width="40" height="22" rx="3" fill="#04111E" stroke="#00D4FF" stroke-width="1.1"/>
+        <text x="100" y="249" text-anchor="middle" font-size="5.5" fill="#00D4FF" font-family="monospace">V.E.R.A</text>
+        <text x="100" y="257" text-anchor="middle" font-size="4" fill="#00F5A0" font-family="monospace">ONLINE</text>
+        <path d="M58 210 Q48 225 42 260 L56 258 Q58 235 68 220Z" fill="#0D3A52" stroke="rgba(0,212,255,.3)" stroke-width=".8"/>
+        <path d="M142 210 Q152 225 158 260 L144 258 Q142 235 132 220Z" fill="#0D3A52" stroke="rgba(0,212,255,.3)" stroke-width=".8"/>
+        <ellipse cx="45" cy="260" rx="9" ry="4.5" fill="none" stroke="#00D4FF" stroke-width="1.3" filter="url(#vg)"/>
+        <ellipse cx="155" cy="260" rx="9" ry="4.5" fill="none" stroke="#00D4FF" stroke-width="1.3" filter="url(#vg)"/>
+        <rect x="16" y="264" width="34" height="24" rx="3" fill="#030E1A" stroke="#00D4FF" stroke-width="1.1"/>
+        <line x1="20" y1="270" x2="46" y2="270" stroke="#00D4FF" stroke-width=".65" opacity=".5"/>
+        <line x1="20" y1="274" x2="44" y2="274" stroke="#00D4FF" stroke-width=".65" opacity=".4"/>
+        <line x1="20" y1="278" x2="46" y2="278" stroke="#00D4FF" stroke-width=".65" opacity=".5"/>
+        <rect x="88" y="188" width="24" height="10" rx="5" fill="url(#vs)"/>
+        <ellipse cx="100" cy="142" rx="40" ry="42" fill="url(#vs)"/>
+        <path d="M60 130 Q60 96 100 92 Q140 96 140 130 Q138 106 126 98 Q114 92 100 92 Q86 92 74 98 Q62 106 60 130Z" fill="#003850"/>
+        <ellipse cx="82" cy="140" rx="10" ry="8.5" fill="#001525"/>
+        <ellipse cx="118" cy="140" rx="10" ry="8.5" fill="#001525"/>
+        <circle cx="82" cy="140" r="4" fill="#00D4FF" opacity=".85"/>
+        <circle cx="118" cy="140" r="4" fill="#00D4FF" opacity=".85"/>
+        <circle cx="84" cy="138" r="1.8" fill="white" opacity=".85"/>
+        <circle cx="120" cy="138" r="1.8" fill="white" opacity=".85"/>
+        <circle cx="82" cy="140" r="9" fill="none" stroke="#00D4FF" stroke-width=".8" opacity=".35" filter="url(#vg)"/>
+        <circle cx="118" cy="140" r="9" fill="none" stroke="#00D4FF" stroke-width=".8" opacity=".35" filter="url(#vg)"/>
+        <path d="M70 129 Q82 125 94 129" stroke="#002535" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+        <path d="M106 129 Q118 125 130 129" stroke="#002535" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+        <path d="M84 163 Q100 169 116 163" stroke="#009AC0" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <circle cx="58" cy="144" r="5.5" fill="#001525" stroke="#00D4FF" stroke-width="1.1"/>
+        <circle cx="58" cy="144" r="2.8" fill="#00D4FF" opacity=".65"/>
+        <circle cx="142" cy="144" r="5.5" fill="#001525" stroke="#00D4FF" stroke-width="1.1"/>
+        <circle cx="142" cy="144" r="2.8" fill="#00D4FF" opacity=".65"/>
+      </svg>
+    </div>
+    <div class="vera-glow"></div>
+    <div class="vera-name-sm">V.E.R.A</div>
+    <div class="vera-reaction" id="veraReaction">🤖</div>
+    <div class="vera-bubble-sm">
+      <span id="veraTW2"></span><span class="tw-cursor"></span>
+    </div>
+    <div class="sidebar-stats">
+      <div class="ss-row"><span class="ss-label">Ejercicio</span><span class="ss-val" id="ssEx">1/10</span></div>
+      <div class="ss-row"><span class="ss-label">Intentos</span><span class="ss-val" id="ssAtt">3</span></div>
+      <div class="ss-row"><span class="ss-label">Racha</span><span class="ss-val" id="ssCombo">0 🔥</span></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── BOSS BATTLE OVERLAY ── -->
+<div class="boss-screen" id="bossScreen">
+  <div class="boss-title" id="bossTitle">⚡ GLITCH ⚡</div>
+  <div class="boss-sub">JEFE FINAL — MÓDULO 0</div>
+  <div class="boss-bars">
+    <div class="bar-wrap">
+      <span class="bar-label" style="color:var(--red)">GLITCH</span>
+      <div class="bar-track"><div class="bar-fill boss-hp" id="bossHPBar" style="width:100%"></div></div>
+      <span id="bossHPVal" style="font-family:'Orbitron',monospace;font-size:.78rem;color:var(--red)">3/3</span>
+    </div>
+    <div class="bar-wrap">
+      <span class="bar-label" style="color:var(--green)">TÚ</span>
+      <div class="bar-track"><div class="bar-fill player-hp" id="playerHPBar" style="width:100%"></div></div>
+      <span id="playerHPVal" style="font-family:'Orbitron',monospace;font-size:.78rem;color:var(--green)">3/3</span>
+    </div>
+  </div>
+  <div class="boss-content">
+    <div class="boss-q" id="bossQ"></div>
+    <div class="boss-choices" id="bossChoices"></div>
+  </div>
+</div>
+
+<!-- ── VICTORY SCREEN ── -->
+<div class="victory-screen" id="vicScreen">
+  <div class="vic-title">🏆 MÓDULO COMPLETADO</div>
+  <div class="vic-sub">GLITCH HA SIDO DERROTADO</div>
+  <div class="vic-rewards">
+    <div class="vic-reward"><div class="r-val" id="vicXP">+500</div><div class="r-lbl">XP</div></div>
+    <div class="vic-reward"><div class="r-val" id="vicDB">+200</div><div class="r-lbl">DATABITS</div></div>
+    <div class="vic-reward"><div class="r-val">🏅</div><div class="r-lbl">INSIGNIA M0</div></div>
+  </div>
+  <div style="color:var(--dim);font-size:.82rem;max-width:400px;text-align:center;line-height:1.7" id="vicMsg">
+    VERA: "Lo lograste, Analista. Los primeros nodos de AXIOM City están restaurados."
+  </div>
+  <button class="btn-vic" onclick="completeModule()">CONTINUAR →</button>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   AXIOM MODULE 0 — Exercise Engine v1.0
+   Tipos: multiple-choice · dax-editor · drag-drop
+   Jefe: GLITCH
+══════════════════════════════════════════════════════ */
+
+// ─── State ───────────────────────────────────────────
+const uid    = new URLSearchParams(location.search).get('u');
+const getU   = () => (JSON.parse(localStorage.getItem('axiom_users')||'[]')).find(u=>u.id===uid)||null;
+const saveU  = (u) => {
+  const all = JSON.parse(localStorage.getItem('axiom_users')||'[]');
+  const i = all.findIndex(x=>x.id===u.id);
+  if(i>=0) all[i]=u; else all.push(u);
+  localStorage.setItem('axiom_users', JSON.stringify(all));
+  if(window._saveUserCloud) window._saveUserCloud(u);
+};
+
+let currentEx  = 0;   // 0-9
+let lives      = 3;
+let attempts   = 0;
+let combo      = 0;
+let sessionXP  = 0;
+let sessionDB  = 0;
+let dragItem   = null;
+let twTimer    = null;
+let bossHP     = 3;
+let playerHP   = 3;
+let bossQ      = 0;
+
+// ─── Exercise data ────────────────────────────────────
+const EXERCISES = [
+  // 1 — Multiple choice: ¿qué es DAX?
+  {
+    type:'mc', num:1,
+    q: '¿Cuál es la descripción correcta de DAX?',
+    context: 'VERA: "Antes de escribir fórmulas, necesitas entender qué estamos haciendo. ¿Qué es DAX exactamente?"',
+    choices:[
+      {l:'A', t:'Un lenguaje para crear páginas web', ok:false},
+      {l:'B', t:'Un lenguaje de fórmulas para transformar y analizar datos en Power BI', ok:true},
+      {l:'C', t:'Un tipo de base de datos relacional', ok:false},
+      {l:'D', t:'Un programa para diseñar gráficas', ok:false},
+    ],
+    hints:['Piensa en para qué usas Power BI...','DAX = Data Analysis Expressions. No es para diseñar interfaces.','La clave está en "análisis de datos"'],
+    explain:'DAX (Data Analysis Expressions) es un lenguaje de fórmulas diseñado específicamente para transformar y analizar datos en Power BI, Analysis Services y Power Pivot.'
+  },
+  // 2 — Multiple choice: SUM básico
+  {
+    type:'mc', num:2,
+    q: '¿Qué hace esta medida DAX? <br><code>Total Ventas = SUM(Ventas[Importe])</code>',
+    context: 'El sistema de ventas de AXIOM Motors está caído. Este es el primer nodo que debes restaurar.',
+    choices:[
+      {l:'A', t:'Cuenta cuántas filas hay en la tabla Ventas', ok:false},
+      {l:'B', t:'Suma todos los valores de la columna Importe en la tabla Ventas', ok:true},
+      {l:'C', t:'Promedia los importes de ventas', ok:false},
+      {l:'D', t:'Busca el importe máximo de ventas', ok:false},
+    ],
+    hints:['SUM hace exactamente lo que dice su nombre...','La función SUM siempre suma valores numéricos.','SUM + columna numérica = suma de todos los valores de esa columna.'],
+    explain:'SUM(Tabla[Columna]) suma todos los valores numéricos de esa columna. Es la función más básica de DAX.'
+  },
+  // 3 — Multiple choice: IF
+  {
+    type:'mc', num:3,
+    q: 'Roberto quiere clasificar las ventas: mayores a $1,000 como "Alta" y las demás como "Baja". ¿Cuál es la fórmula correcta?',
+    context: 'El reporte de clasificación de ventas lleva 3 días sin funcionar.',
+    choices:[
+      {l:'A', t:'IF(Ventas[Importe] = 1000, "Alta", "Baja")', ok:false},
+      {l:'B', t:'IF(Ventas[Importe] > 1000, "Alta", "Baja")', ok:true},
+      {l:'C', t:'IF("Alta" > 1000, Ventas[Importe], "Baja")', ok:false},
+      {l:'D', t:'SUM(Ventas[Importe]) > 1000', ok:false},
+    ],
+    hints:['La estructura es: IF(condición, si_verdadero, si_falso)','El operador > significa "mayor que"','¿Cuál opción tiene la condición en el primer argumento?'],
+    explain:'IF(condición, resultado_si_verdadero, resultado_si_falso). La condición Ventas[Importe] > 1000 evalúa si cada venta supera los $1,000.'
+  },
+  // 4 — DAX editor: escribir SUM
+  {
+    type:'dax', num:4,
+    q: 'Escribe una medida DAX que calcule el <strong>total de ventas</strong>. La tabla se llama <code>Ventas</code> y la columna <code>Importe</code>.',
+    context: 'VERA: "Ahora escribe tú. Nada de copiar y pegar — cada tecla cuenta."',
+    answer: 'total ventas = sum(ventas[importe])',
+    template: 'Total Ventas = ',
+    hints:['Usa la función SUM()','La sintaxis es: NombreMedida = SUM(Tabla[Columna])','Exactamente: Total Ventas = SUM(Ventas[Importe])'],
+    table:{cols:['Total Ventas'], rows:[['$847,320.00']]},
+    explain:'Total Ventas = SUM(Ventas[Importe]) — esta medida suma todos los importes de la tabla Ventas.'
+  },
+  // 5 — Multiple choice: operadores
+  {
+    type:'mc', num:5,
+    q: '¿Qué operador DAX usas para indicar "diferente de"?',
+    context: 'VERA: "Los operadores son el vocabulario básico. Sin esto, nada funciona."',
+    choices:[
+      {l:'A', t:'!=', ok:false},
+      {l:'B', t:'<>', ok:true},
+      {l:'C', t:'≠', ok:false},
+      {l:'D', t:'NOT =', ok:false},
+    ],
+    hints:['DAX no usa la sintaxis de otros lenguajes para "diferente"','Piensa en los operadores de Excel...','Es una combinación de < y >'],
+    explain:'En DAX, el operador "diferente de" es <> (menor que + mayor que combinados). Ejemplo: Ventas[Región] <> "Norte"'
+  },
+  // 6 — Multiple choice: SUMX
+  {
+    type:'mc', num:6,
+    q: 'Tienes las columnas <code>Cantidad</code> y <code>Precio</code> en la tabla <code>Ventas</code>. ¿Cómo calculas el total correcto?',
+    context: 'El inventario calcula mal porque alguien usó SUM en lugar de la función correcta.',
+    choices:[
+      {l:'A', t:'SUM(Ventas[Cantidad]) + SUM(Ventas[Precio])', ok:false},
+      {l:'B', t:'SUM(Ventas[Cantidad] * Ventas[Precio])', ok:false},
+      {l:'C', t:'SUMX(Ventas, Ventas[Cantidad] * Ventas[Precio])', ok:true},
+      {l:'D', t:'Ventas[Cantidad] * Ventas[Precio]', ok:false},
+    ],
+    hints:['SUM no puede multiplicar columnas directamente...','Las funciones X recorren la tabla fila por fila','SUMX(tabla, expresión) — ¿cuál opción tiene esa estructura?'],
+    explain:'SUMX(Tabla, Expresión) recorre cada fila de la tabla y evalúa la expresión fila a fila, luego suma todo. Es la forma correcta de multiplicar dos columnas.'
+  },
+  // 7 — DAX editor: IF
+  {
+    type:'dax', num:7,
+    q: 'Escribe una columna calculada que clasifique ventas: si <code>Importe > 500</code> devuelve <code>"Alta"</code>, si no <code>"Baja"</code>.',
+    context: 'VERA: "El reporte de segmentación de ventas depende de esta columna."',
+    answer: 'tipo venta = if(ventas[importe] > 500, "alta", "baja")',
+    template: 'Tipo Venta = ',
+    hints:['Usa IF(condición, valor_si_verdadero, valor_si_falso)','La condición es Ventas[Importe] > 500','Los textos van entre comillas dobles: "Alta"'],
+    table:{cols:['Importe','Tipo Venta'], rows:[['$800','Alta'],['$300','Baja'],['$1,200','Alta'],['$450','Baja']]},
+    explain:'Tipo Venta = IF(Ventas[Importe] > 500, "Alta", "Baja") — evalúa cada fila y devuelve el texto correspondiente.'
+  },
+  // 8 — Drag & Drop: ordenar VAR
+  {
+    type:'drag', num:8,
+    q: 'Ordena los bloques para construir una medida correcta con VAR que calcule la <strong>utilidad</strong> (Ventas - Costos).',
+    context: 'VERA: "Las variables son lo que separa al principiante del experto. Ordénalas."',
+    blocks:['RETURN', 'VAR Ventas = SUM(Ventas[Importe])', 'Utilidad =', 'VAR Costos = SUM(Ventas[Costo])', 'Ventas - Costos'],
+    solution:['Utilidad =', 'VAR Ventas = SUM(Ventas[Importe])', 'VAR Costos = SUM(Ventas[Costo])', 'RETURN', 'Ventas - Costos'],
+    hints:['Una medida DAX siempre empieza con su nombre','Las variables VAR van antes del RETURN','RETURN viene antes del resultado final'],
+    explain:'La estructura correcta: Nombre = VAR x = ... VAR y = ... RETURN resultado'
+  },
+  // 9 — DAX editor: SUMX
+  {
+    type:'dax', num:9,
+    q: 'Usa <code>SUMX</code> para calcular el total de ventas multiplicando <code>Ventas[Cantidad]</code> por <code>Ventas[Precio]</code>.',
+    context: 'VERA: "Este es el cálculo que más errores genera. Demuestra que tú no eres de esos."',
+    answer: 'total = sumx(ventas, ventas[cantidad] * ventas[precio])',
+    template: 'Total = ',
+    hints:['SUMX necesita 2 argumentos: la tabla y la expresión','Estructura: SUMX(Tabla, Expresión)','SUMX(Ventas, Ventas[Cantidad] * Ventas[Precio])'],
+    table:{cols:['Cantidad','Precio','Subtotal'], rows:[['2','$100','$200'],['3','$200','$600'],['Total','','$800']]},
+    explain:'SUMX(Ventas, Ventas[Cantidad] * Ventas[Precio]) recorre cada fila, multiplica, y suma los resultados.'
+  },
+  // 10 — DAX editor: VAR completo
+  {
+    type:'dax', num:10,
+    q: 'Escribe la medida <strong>Utilidad</strong> usando variables VAR. Ventas = SUM(Ventas[Importe]), Costos = SUM(Ventas[Costo]).',
+    context: 'VERA: "Este es el ejercicio más importante del módulo. Si lo resuelves, estás listo para enfrentar a GLITCH."',
+    answer: 'utilidad = var ventas = sum(ventas[importe]) var costos = sum(ventas[costo]) return ventas - costos',
+    template: 'Utilidad = \n',
+    hints:['Empieza con VAR Ventas = SUM(Ventas[Importe])','Luego VAR Costos = SUM(Ventas[Costo])','Termina con RETURN Ventas - Costos'],
+    table:{cols:['Ventas','Costos','Utilidad'], rows:[['$847,320','$523,100','$324,220']]},
+    explain:'Utilidad = VAR Ventas = SUM(Ventas[Importe]) VAR Costos = SUM(Ventas[Costo]) RETURN Ventas - Costos'
+  }
+];
+
+// Boss questions
+const BOSS_QS = [
+  {
+    q:'¿Cuál es la diferencia entre SUM y SUMX?',
+    choices:[
+      {t:'No hay diferencia, hacen lo mismo', ok:false},
+      {t:'SUM suma una columna directamente; SUMX evalúa una expresión fila a fila y luego suma', ok:true},
+      {t:'SUM es más rápido, SUMX es más lento siempre', ok:false},
+    ]
+  },
+  {
+    q:'¿Para qué sirve VAR en DAX?',
+    choices:[
+      {t:'Para crear variables que se calculan al cargar los datos', ok:false},
+      {t:'Para guardar resultados temporales y reutilizarlos en la misma fórmula', ok:true},
+      {t:'Para definir variables globales que afectan todo el modelo', ok:false},
+    ]
+  },
+  {
+    q:'Roberto tiene: IF(Ventas[Importe] > 1000 && Ventas[Región] = "Norte", "VIP", "Normal"). ¿Qué hace?',
+    choices:[
+      {t:'Marca como VIP solo las ventas mayores a $1,000 O las de la región Norte', ok:false},
+      {t:'Marca como VIP las ventas que superen $1,000 Y que sean de la región Norte simultáneamente', ok:true},
+      {t:'Suma las ventas mayores a $1,000 de la región Norte', ok:false},
+    ]
+  }
+];
+
+// VERA messages
+const VERA_CORRECT = [
+  "Nodo restaurado. Sigue así.",
+  "¡Exacto! +1 a la resistencia de AXIOM.",
+  "Lo sabías. El sistema lo agradece.",
+  "Correcto. AXIOM respira un poco más.",
+  "Eso es DAX. Bien hecho, Analista."
+];
+const VERA_WRONG = [
+  "Error detectado. Recalibra tu lógica.",
+  "El sistema rechazó esa fórmula. Intenta de nuevo.",
+  "GLITCH está aprovechando ese error.",
+  "No es esa. Piensa en la estructura de la función.",
+  "Casi. Revisa la sintaxis."
+];
+const VERA_HINTS = [
+  "Aquí va una pista...",
+  "Pista más específica:",
+  "Esta es casi la respuesta:"
+];
+
+// ─── Audio ────────────────────────────────────────────
+let audioCtx=null;
+function getAC(){ if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
+function sfx(type){
+  try{
+    const ac=getAC(); const m=ac.createGain(); m.connect(ac.destination);
+    if(type==='correct'){
+      [[523,.12,.2],[659,.2,.18,undefined,0.12],[784,.3,.15,undefined,0.24]].forEach(([f,d,v,w,delay=0])=>{
+        const o=ac.createOscillator(),g=ac.createGain();
+        o.type='sine';o.frequency.value=f;
+        g.gain.setValueAtTime(.0001,ac.currentTime+delay);
+        g.gain.linearRampToValueAtTime(v,ac.currentTime+delay+.04);
+        g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+delay+d);
+        o.connect(g);g.connect(m);o.start(ac.currentTime+delay);o.stop(ac.currentTime+delay+d+.1);
+      });
+    } else if(type==='wrong'){
+      const o=ac.createOscillator(),g=ac.createGain();
+      o.type='sawtooth';o.frequency.setValueAtTime(220,ac.currentTime);
+      o.frequency.exponentialRampToValueAtTime(75,ac.currentTime+.22);
+      g.gain.setValueAtTime(.12,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.25);
+      o.connect(g);g.connect(m);o.start();o.stop(ac.currentTime+.28);
+    } else if(type==='levelup'){
+      [523,659,784,1047].forEach((f,i)=>{
+        const o=ac.createOscillator(),g=ac.createGain();
+        o.type='triangle';o.frequency.value=f;
+        const t=ac.currentTime+i*.1;
+        g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(.2,t+.08);g.gain.exponentialRampToValueAtTime(.001,t+.55);
+        o.connect(g);g.connect(m);o.start(t);o.stop(t+.6);
+      });
+    } else if(type==='boss'){
+      [200,150,100].forEach((f,i)=>{
+        const o=ac.createOscillator(),g=ac.createGain();
+        o.type='sawtooth';o.frequency.value=f;
+        const t=ac.currentTime+i*.15;
+        g.gain.setValueAtTime(.15,t);g.gain.exponentialRampToValueAtTime(.001,t+.3);
+        o.connect(g);g.connect(m);o.start(t);o.stop(t+.35);
+      });
+    }
+  }catch(e){}
+}
+
+// ─── Typewriter ───────────────────────────────────────
+function typeVera(text, speed=32){
+  clearTimeout(twTimer);
+  const el=document.getElementById('veraTW2');
+  if(!el) return;
+  let i=0; el.textContent='';
+  function next(){ if(i<text.length){ el.textContent+=text[i++]; twTimer=setTimeout(next,speed); } }
+  next();
+}
+
+// ─── HUD update ───────────────────────────────────────
+function updateHUD(){
+  const u=getU(); if(!u) return;
+  document.getElementById('hudXP').textContent   = u.xp || 0;
+  document.getElementById('hudDB').textContent   = u.databits || 0;
+  document.getElementById('hudStreak').textContent = u.streak || 0;
+  document.getElementById('ssEx').textContent    = `${currentEx+1}/10`;
+  document.getElementById('ssAtt').textContent   = 3 - attempts;
+  document.getElementById('ssCombo').textContent = `${combo} 🔥`;
+  // Lives
+  document.querySelectorAll('.heart').forEach((h,i)=>{ h.classList.toggle('lost', i >= lives); });
+}
+
+function updateProgress(){
+  const pct = (currentEx / 11) * 100;
+  document.getElementById('progFill').style.width = pct + '%';
+  // Dots
+  const dots = document.getElementById('progDots');
+  dots.innerHTML = Array.from({length:11},(_,i)=>{
+    let cls='pdot';
+    if(i===10) cls+=' boss';
+    if(i<currentEx) cls+=' done';
+    else if(i===currentEx) cls+=' current';
+    return `<div class="${cls}" title="${i<10?'Ejercicio '+(i+1):'⚔️ GLITCH'}"></div>`;
+  }).join('');
+}
+
+// ─── Reward XP / DataBits ─────────────────────────────
+function giveReward(xp, db){
+  const u=getU(); if(!u) return;
+  u.xp       = (u.xp||0) + xp;
+  u.databits = (u.databits||0) + db;
+  sessionXP += xp;
+  sessionDB += db;
+  saveU(u);
+  updateHUD();
+  showXPPop(xp);
+}
+
+function showXPPop(xp){
+  const el=document.createElement('div');
+  el.className='xp-pop';
+  el.innerHTML=`<div class="xp-num">+${xp}</div><div class="xp-lbl">XP</div>`;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 900);
+}
+
+// ─── Render exercise ──────────────────────────────────
+function renderExercise(idx){
+  attempts=0;
+  updateProgress();
+  updateHUD();
+
+  if(idx >= EXERCISES.length){ startBoss(); return; }
+  const ex = EXERCISES[idx];
+  const area = document.getElementById('exArea');
+
+  let html = `
+    <div class="ex-header">
+      <div class="ex-num">EJERCICIO ${ex.num} DE 10 — ${typeLabel(ex.type)}</div>
+      <div class="ex-question">${ex.q}</div>
+      ${ex.context ? `<div class="ex-context">${ex.context}</div>` : ''}
+    </div>`;
+
+  if(ex.type==='mc'){
+    html += `<div class="choices" id="choicesEl">` +
+      ex.choices.map(c=>`
+        <div class="choice" data-ok="${c.ok}" onclick="selectChoice(this,'${ex.type}')">
+          <div class="choice-letter">${c.l}</div>
+          <div class="choice-text">${c.t}</div>
+        </div>`).join('') + `</div>`;
+    html += `<div class="action-row">
+      <button class="btn-submit" id="btnSubmit" onclick="submitMC()" disabled>✓ CONFIRMAR</button>
+      <button class="btn-skip" onclick="showHint()">💡 Pista (${3-attempts} restantes)</button>
+    </div>`;
+
+  } else if(ex.type==='dax'){
+    html += `
+      <div class="dax-editor-wrap">
+        <div class="dax-label">Editor DAX</div>
+        <div class="dax-editor-box">
+          <div class="dax-topbar">
+            <span class="dax-title">medida_axiom.dax</span>
+            <div class="dax-dots">
+              <div class="dax-dot" style="background:#FF4D6D"></div>
+              <div class="dax-dot" style="background:#F2C94C"></div>
+              <div class="dax-dot" style="background:#00F5A0"></div>
+            </div>
+          </div>
+          <div class="editor-inner">
+            <div class="line-nums" id="lineNums">1</div>
+            <textarea class="dax-textarea" id="daxInput" spellcheck="false"
+              placeholder="Escribe tu fórmula DAX aquí..."
+              oninput="onDaxInput()"
+              onkeydown="if(event.key==='Tab'){event.preventDefault();this.setRangeText('  ',this.selectionStart,this.selectionEnd,'end');}"
+            >${ex.template||''}</textarea>
+          </div>
+          <div class="dax-feedback" id="daxFeedback"></div>
+        </div>
+      </div>
+      <div class="action-row">
+        <button class="btn-submit" id="btnSubmit" onclick="submitDAX()">▶ EJECUTAR</button>
+        <button class="btn-skip" onclick="showHint()">💡 Pista</button>
+      </div>
+      <div id="resultTableWrap"></div>`;
+
+  } else if(ex.type==='drag'){
+    const shuffled = [...ex.blocks].sort(()=>Math.random()-.5);
+    html += `
+      <div class="drag-area">
+        <div class="drag-label">BLOQUES DISPONIBLES — arrastra al orden correcto</div>
+        <div class="drag-blocks" id="dragBlocks">
+          ${shuffled.map((b,i)=>`
+            <div class="drag-block" draggable="true" data-val="${b}"
+              ondragstart="dragStart(event)" ondragend="dragEnd(event)">${b}</div>`).join('')}
+        </div>
+        <div class="drag-label">ORDEN CORRECTO — suelta aquí</div>
+        <div class="drop-slots" id="dropSlots">
+          ${ex.solution.map((_,i)=>`
+            <div class="drop-slot" data-idx="${i}"
+              ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropOn(event,${i})">
+              <span class="slot-num">${i+1}</span>
+              <span class="slot-content">Suelta aquí...</span>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="action-row">
+        <button class="btn-submit" id="btnSubmit" onclick="submitDrag()">✓ VERIFICAR ORDEN</button>
+        <button class="btn-skip" onclick="showHint()">💡 Pista</button>
+        <button class="btn-skip" onclick="clearSlots()">↺ Limpiar</button>
+      </div>`;
+  }
+
+  area.innerHTML = html;
+
+  // Focus DAX editor
+  if(ex.type==='dax'){
+    const ta=document.getElementById('daxInput');
+    if(ta){ ta.focus(); ta.selectionStart=ta.selectionEnd=ta.value.length; updateLineNums(); }
+  }
+
+  // VERA intro
+  const intros=[
+    'Primer ejercicio. Sin excusas.',
+    'Sigue. El sistema te observa.',
+    'IF — el corazón de la lógica.',
+    'Hora de escribir. Sin miedo.',
+    'Los operadores son tu vocabulario.',
+    'SUMX — fila a fila, sin piedad.',
+    'IF con código. Tú puedes.',
+    'VAR — piensa como experto.',
+    'SUMX real. Demuéstralo.',
+    'El más difícil. El más importante.'
+  ];
+  typeVera(intros[idx] || 'Siguiente ejercicio. Concéntrate.');
+  document.getElementById('veraReaction').textContent='🤖';
+}
+
+function typeLabel(t){ return t==='mc'?'OPCIÓN MÚLTIPLE':t==='dax'?'EDITOR DAX':'ORDENAR BLOQUES'; }
+
+// ─── Multiple choice ──────────────────────────────────
+function selectChoice(el, type){
+  document.querySelectorAll('.choice').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('btnSubmit').disabled=false;
+}
+
+function submitMC(){
+  const sel=document.querySelector('.choice.selected');
+  if(!sel) return;
+  const ok = sel.dataset.ok==='true';
+  processAnswer(ok);
+  // Color all choices
+  document.querySelectorAll('.choice').forEach(c=>{
+    if(c.dataset.ok==='true') c.classList.add('correct');
+    else if(c===sel && !ok) c.classList.add('wrong');
+    else c.classList.add('disabled');
+  });
+  document.getElementById('btnSubmit').disabled=true;
+  if(ok) setTimeout(advanceEx, 1600);
+}
+
+// ─── DAX editor ───────────────────────────────────────
+function onDaxInput(){
+  updateLineNums();
+  const fb=document.getElementById('daxFeedback');
+  if(fb){ fb.className='dax-feedback'; fb.textContent=''; }
+}
+
+function updateLineNums(){
+  const ta=document.getElementById('daxInput');
+  const ln=document.getElementById('lineNums');
+  if(!ta||!ln) return;
+  const lines=ta.value.split('\n').length;
+  ln.innerHTML=Array.from({length:lines},(_,i)=>i+1).join('<br>');
+}
+
+function submitDAX(){
+  const ex=EXERCISES[currentEx];
+  const val=(document.getElementById('daxInput')?.value||'').trim().toLowerCase().replace(/\s+/g,' ');
+  // Normalize — remove extra spaces around operators
+  const norm = val.replace(/\s*=\s*/g,'=').replace(/\s*\(\s*/g,'(').replace(/\s*\)\s*/g,')').replace(/\s*\*\s*/g,'*').replace(/\s*-\s*/g,'-');
+  const ans  = ex.answer.replace(/\s+/g,' ').replace(/\s*=\s*/g,'=').replace(/\s*\(\s*/g,'(').replace(/\s*\)\s*/g,')').replace(/\s*\*\s*/g,'*').replace(/\s*-\s*/g,'-');
+
+  // Check if key parts match (flexible)
+  const isOk = norm === ans || checkDAXFlexible(norm, ex);
+  const fb=document.getElementById('daxFeedback');
+
+  if(isOk){
+    fb.className='dax-feedback ok'; fb.textContent='✅ Fórmula correcta — nodo restaurado';
+    processAnswer(true);
+    // Show result table
+    if(ex.table){
+      const tw=document.getElementById('resultTableWrap');
+      tw.innerHTML=`<div class="result-table"><table>
+        <tr>${ex.table.cols.map(c=>`<th>${c}</th>`).join('')}</tr>
+        ${ex.table.rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}
+      </table></div>`;
+    }
+    setTimeout(advanceEx, 2000);
+  } else {
+    fb.className='dax-feedback err';
+    // Detect common errors
+    if(!norm.includes('sum') && !norm.includes('sumx')) fb.textContent='❌ Falta la función principal. ¿SUM o SUMX?';
+    else if(!norm.includes('[')) fb.textContent='❌ Falta la referencia a la columna. Usa Tabla[Columna]';
+    else fb.textContent='❌ Revisa la sintaxis. Casi lo tienes...';
+    processAnswer(false);
+  }
+}
+
+function checkDAXFlexible(norm, ex){
+  // Accept minor spacing variations
+  const keywords = ex.answer.toLowerCase().split(/[\s=()[\],]+/).filter(Boolean);
+  return keywords.every(k => norm.includes(k));
+}
+
+// ─── Drag & Drop ──────────────────────────────────────
+let slotData = {};
+
+function dragStart(e){ dragItem=e.target; e.target.classList.add('dragging'); }
+function dragEnd(e){ e.target.classList.remove('dragging'); dragItem=null; }
+function dragOver(e){ e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+function dragLeave(e){ e.currentTarget.classList.remove('drag-over'); }
+
+function dropOn(e, idx){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if(!dragItem) return;
+  const val=dragItem.dataset.val;
+  slotData[idx]=val;
+  const sc=e.currentTarget.querySelector('.slot-content');
+  sc.textContent=val; sc.style.color='var(--purple)';
+  e.currentTarget.classList.add('filled');
+  // Remove from source blocks if from drag-blocks
+  if(dragItem.parentId==='dragBlocks'||dragItem.closest('#dragBlocks')){
+    dragItem.remove();
+  }
+}
+
+function clearSlots(){
+  slotData={};
+  const ex=EXERCISES[currentEx];
+  // Re-render
+  document.querySelectorAll('.drop-slot').forEach(s=>{
+    s.classList.remove('filled');
+    const sc=s.querySelector('.slot-content');
+    sc.textContent='Suelta aquí...'; sc.style.color='';
+  });
+  // Restore blocks
+  const db=document.getElementById('dragBlocks');
+  db.innerHTML=ex.blocks.sort(()=>Math.random()-.5).map(b=>`
+    <div class="drag-block" draggable="true" data-val="${b}"
+      ondragstart="dragStart(event)" ondragend="dragEnd(event)">${b}</div>`).join('');
+}
+
+function submitDrag(){
+  const ex=EXERCISES[currentEx];
+  const filled=Object.keys(slotData).length;
+  if(filled < ex.solution.length){ showToast('Completa todos los slots primero.'); return; }
+  const isOk = ex.solution.every((sol,i) => slotData[i] === sol);
+  // Color slots
+  document.querySelectorAll('.drop-slot').forEach((s,i)=>{
+    const val=slotData[i];
+    if(val===ex.solution[i]) s.style.borderColor='var(--green)';
+    else s.style.borderColor='var(--red)';
+  });
+  processAnswer(isOk);
+  if(isOk) setTimeout(advanceEx, 1800);
+}
+
+// ─── Process answer ───────────────────────────────────
+function processAnswer(ok){
+  const ex=EXERCISES[currentEx];
+  if(ok){
+    sfx('correct');
+    combo++;
+    const xp = 50 + (combo > 2 ? 25 : 0); // bonus por racha
+    giveReward(xp, 20);
+    document.getElementById('veraReaction').textContent='🎉';
+    typeVera(VERA_CORRECT[Math.floor(Math.random()*VERA_CORRECT.length)]);
+    showToast(`✅ ¡Correcto! +${xp} XP +20 🔷`);
+    // Explain
+    setTimeout(()=>{
+      const exEl=document.getElementById('exArea');
+      const explEl=document.createElement('div');
+      explEl.style.cssText='margin-top:1rem;padding:.8rem 1rem;background:rgba(0,245,160,.06);border:1px solid rgba(0,245,160,.2);border-left:3px solid var(--green);font-size:.82rem;color:var(--text);line-height:1.65';
+      explEl.innerHTML=`<strong style="color:var(--green)">💡 Explicación:</strong> ${ex.explain}`;
+      exEl.appendChild(explEl);
+    }, 400);
+  } else {
+    attempts++;
+    lives = Math.max(0, 3 - Math.floor(attempts/3));
+    combo=0;
+    sfx('wrong');
+    document.getElementById('veraReaction').textContent='😰';
+    typeVera(VERA_WRONG[Math.floor(Math.random()*VERA_WRONG.length)]);
+    updateHUD();
+    if(attempts >= 3){
+      // Force hint
+      showHint(true);
+    }
+  }
+}
+
+// ─── Hints ────────────────────────────────────────────
+function showHint(forced=false){
+  const ex=EXERCISES[currentEx];
+  const hintIdx=Math.min(attempts, ex.hints.length-1);
+  const hint=ex.hints[hintIdx];
+  const label=VERA_HINTS[Math.min(hintIdx, VERA_HINTS.length-1)];
+  typeVera(`${label} ${hint}`);
+  document.getElementById('veraReaction').textContent='💡';
+  showToast(`💡 ${hint}`);
+}
+
+// ─── Advance ──────────────────────────────────────────
+function advanceEx(){
+  currentEx++;
+  if(currentEx >= EXERCISES.length){ startBoss(); return; }
+  renderExercise(currentEx);
+}
+
+// ─── BOSS BATTLE ─────────────────────────────────────
+function startBoss(){
+  sfx('boss');
+  bossHP=3; playerHP=3; bossQ=0;
+  document.getElementById('bossScreen').classList.add('show');
+  updateBossBars();
+  typeVera('¡GLITCH apareció! Este es el jefe final del Módulo 0. ¡Usa todo lo que aprendiste!');
+  document.getElementById('veraReaction').textContent='⚔️';
+  setTimeout(()=>renderBossQ(),800);
+}
+
+function updateBossBars(){
+  const bPct=(bossHP/3)*100, pPct=(playerHP/3)*100;
+  document.getElementById('bossHPBar').style.width=bPct+'%';
+  document.getElementById('playerHPBar').style.width=pPct+'%';
+  document.getElementById('bossHPVal').textContent=`${bossHP}/3`;
+  document.getElementById('playerHPVal').textContent=`${playerHP}/3`;
+}
+
+function renderBossQ(){
+  if(bossQ >= BOSS_QS.length){ victoryBoss(); return; }
+  const q=BOSS_QS[bossQ];
+  document.getElementById('bossQ').innerHTML=q.q;
+  document.getElementById('bossChoices').innerHTML=q.choices.map((c,i)=>`
+    <div class="boss-choice" onclick="answerBoss(this,${c.ok})">
+      <span style="font-family:'Orbitron',monospace;font-size:.7rem;color:var(--dim)">${String.fromCharCode(65+i)}</span>
+      ${c.t}
+    </div>`).join('');
+}
+
+function answerBoss(el, ok){
+  document.querySelectorAll('.boss-choice').forEach(c=>c.style.pointerEvents='none');
+  if(ok){
+    el.classList.add('correct');
+    sfx('correct');
+    bossHP--;
+    giveReward(100, 40);
+    typeVera('¡Golpe directo a GLITCH! Sigue atacando.');
+    document.getElementById('veraReaction').textContent='💥';
+  } else {
+    el.classList.add('wrong');
+    sfx('wrong');
+    playerHP--;
+    typeVera('GLITCH contraatacó. ¡Resiste!');
+    document.getElementById('veraReaction').textContent='😨';
+    // Show correct
+    document.querySelectorAll('.boss-choice').forEach(c=>{ if(c.onclick?.toString().includes('true')) c.classList.add('correct'); });
+  }
+  updateBossBars();
+  bossQ++;
+  if(bossHP<=0){ setTimeout(victoryBoss,1200); return; }
+  if(playerHP<=0){ setTimeout(defeatBoss,1200); return; }
+  setTimeout(()=>{
+    document.querySelectorAll('.boss-choice').forEach(c=>{ c.classList.remove('correct','wrong'); c.style.pointerEvents='auto'; });
+    renderBossQ();
+  },1800);
+}
+
+function victoryBoss(){
+  sfx('levelup');
+  document.getElementById('bossScreen').classList.remove('show');
+  document.getElementById('vicXP').textContent=`+${sessionXP}`;
+  document.getElementById('vicDB').textContent=`+${sessionDB}`;
+  document.getElementById('vicScreen').classList.add('show');
+  // Badge
+  const u=getU();
+  if(u && !u.badges.includes('m0')){
+    u.badges.push('m0');
+    u.modulesCompleted.push(0);
+    u.currentModule=1;
+    saveU(u);
+  }
+  typeVera('GLITCH derrotado. Los nodos del Módulo 0 están restaurados. AXIOM respira.');
+  document.getElementById('veraReaction').textContent='🏆';
+}
+
+function defeatBoss(){
+  document.getElementById('bossScreen').classList.remove('show');
+  showToast('⚠️ GLITCH te derrotó... pero no es el fin. ¡Repasa y regresa!');
+  setTimeout(()=>{ if(confirm('GLITCH te venció esta vez. ¿Repasar los ejercicios fallidos?')){ currentEx=0; renderExercise(0); } }, 600);
+}
+
+function completeModule(){
+  document.body.style.transition='opacity .8s';
+  document.body.style.opacity='0';
+  setTimeout(()=>{ location.href=`game.html?u=${uid}`; }, 800);
+}
+
+// ─── UI helpers ───────────────────────────────────────
+function showToast(msg, dur=3000){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t);
+  t._t=setTimeout(()=>t.classList.remove('show'),dur);
+}
+function toggleTheme(){ document.body.classList.toggle('light'); }
+function exitToMap(){ if(confirm('¿Salir al mapa? Tu progreso del ejercicio actual se perderá.')) location.href=`game.html?u=${uid}`; }
+
+// ─── Particles ────────────────────────────────────────
+const cv=document.getElementById('bg'),cx=cv.getContext('2d');
+let pts=[];
+function resize(){ cv.width=innerWidth; cv.height=innerHeight; initPts(); }
+function initPts(){ pts=[]; for(let i=0;i<60;i++) pts.push({x:Math.random()*cv.width,y:Math.random()*cv.height,vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25,r:Math.random()*1.2+.4,a:Math.random()*.35+.08}); }
+function drawBg(){
+  cx.clearRect(0,0,cv.width,cv.height);
+  cx.strokeStyle='rgba(0,212,255,.03)'; cx.lineWidth=1;
+  for(let x=0;x<cv.width;x+=80){ cx.beginPath(); cx.moveTo(x,0); cx.lineTo(x,cv.height); cx.stroke(); }
+  for(let y=0;y<cv.height;y+=80){ cx.beginPath(); cx.moveTo(0,y); cx.lineTo(cv.width,y); cx.stroke(); }
+  pts.forEach(p=>{
+    cx.beginPath();cx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    cx.fillStyle=`rgba(242,201,76,${p.a})`;cx.fill();
+    p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0||p.x>cv.width) p.vx*=-1;
+    if(p.y<0||p.y>cv.height) p.vy*=-1;
+  });
+  requestAnimationFrame(drawBg);
+}
+
+// ─── Boot ─────────────────────────────────────────────
+addEventListener('resize',resize);
+resize(); drawBg();
+
+if(!uid||!getU()){ location.href='index.html'; }
+else {
+  updateHUD();
+  renderExercise(0);
+  document.addEventListener('click',()=>{ try{ getAC().resume(); }catch(e){} },{once:true});
+}
+</script>
+</body>
+</html>
