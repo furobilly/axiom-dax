@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AXIOM — La Ciudad de los Datos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:ital,wght@0,300;0,400;0,600;1,300&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#0D0D1A; --panel:#1A1A2E; --gold:#F2C94C;
+      --cyan:#00D4FF; --red:#FF4D6D; --green:#00F5A0;
+      --purple:#A855F7; --text:#E8E8F0; --dim:#7777AA;
+    }
+    body.light { --bg:#EEF0FF; --panel:#FFFFFF; --text:#0D0D1A; --dim:#5555AA; }
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+    body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;min-height:100vh;overflow-x:hidden;transition:background .4s,color .4s;}
+    body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.025) 2px,rgba(0,0,0,.025) 4px);pointer-events:none;z-index:9999;}
+    canvas#bg{position:fixed;inset:0;z-index:0;pointer-events:none;}
+
+    /* ── Top bar ── */
+    .top-bar{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:.65rem 1.4rem;background:rgba(13,13,26,.88);border-bottom:1px solid rgba(242,201,76,.1);backdrop-filter:blur(8px);}
+    .bar-logo{font-family:'Orbitron',monospace;font-size:.85rem;letter-spacing:.3em;color:var(--gold);}
+    .bar-right{display:flex;gap:.5rem;align-items:center;}
+    .icon-btn{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:var(--dim);padding:.3rem .65rem;cursor:pointer;font-size:.85rem;transition:all .3s;border-radius:2px;}
+    .icon-btn:hover{color:var(--text);border-color:rgba(255,255,255,.25);}
+    .icon-btn.on{color:var(--gold);border-color:rgba(242,201,76,.5);}
+
+    /* ── Scene ── */
+    .scene{position:relative;z-index:10;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 1.5rem 2rem;}
+    .mission-layout{display:flex;align-items:flex-start;justify-content:center;gap:2rem;max-width:1000px;width:100%;animation:fadeUp .7s ease both;}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+
+    /* ── VERA panel ── */
+    .vera-panel{flex-shrink:0;width:210px;display:flex;flex-direction:column;align-items:center;gap:.75rem;}
+    .vera-wrap{width:190px;height:280px;position:relative;}
+    .vera-wrap::before{content:'';position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);width:130px;height:16px;background:radial-gradient(ellipse,rgba(0,212,255,.5) 0%,transparent 70%);filter:blur(4px);animation:pulse 2.5s ease-in-out infinite;}
+    @keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
+    .vera-fig{width:100%;height:100%;filter:drop-shadow(0 0 10px rgba(0,212,255,.55));animation:holoFlick 8s ease-in-out infinite;}
+    @keyframes holoFlick{0%,100%{opacity:1}5%{opacity:.65}10%{opacity:1}15%{opacity:.35}20%{opacity:1}88%{opacity:1}92%{opacity:.6}96%{opacity:1}}
+    .vera-name{font-family:'Orbitron',monospace;font-size:.7rem;letter-spacing:.28em;color:var(--cyan);text-shadow:0 0 10px rgba(0,212,255,.5);}
+    .vera-dot{font-size:.68rem;color:var(--dim);display:flex;align-items:center;gap:.4rem;}
+    .vera-dot::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink .8s infinite;flex-shrink:0;}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+    .vera-bubble{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.22);border-radius:4px;padding:.65rem .85rem;font-size:.78rem;font-style:italic;color:var(--cyan);line-height:1.65;position:relative;width:100%;}
+    .vera-bubble::before{content:'';position:absolute;top:13px;right:-8px;border:4px solid transparent;border-left-color:rgba(0,212,255,.22);}
+    .tw-cursor{display:inline-block;width:2px;height:.8em;background:var(--cyan);vertical-align:middle;animation:blink .6s infinite;}
+
+    /* ── Mission card ── */
+    .mission-card{flex:1;max-width:640px;background:var(--panel);border:1px solid rgba(242,201,76,.16);position:relative;overflow:hidden;}
+    .mission-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+    .card-head{padding:1.5rem 1.8rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.05);}
+    .m-title{font-family:'Orbitron',monospace;font-size:clamp(.95rem,2.5vw,1.2rem);color:var(--gold);letter-spacing:.07em;display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;}
+    .m-badge{font-size:.62rem;letter-spacing:.2em;background:rgba(242,201,76,.1);border:1px solid rgba(242,201,76,.28);color:var(--gold);padding:.18rem .55rem;}
+    .card-body{padding:1.3rem 1.8rem;display:flex;flex-direction:column;gap:1.1rem;}
+
+    .story-block{background:rgba(0,0,0,.22);border:1px solid rgba(0,212,255,.1);border-left:3px solid var(--cyan);padding:1rem 1.2rem;font-size:.88rem;line-height:1.85;color:var(--text);}
+    .story-block p{margin:.45rem 0;}.story-block p:first-child{margin-top:0;}.story-block p:last-child{margin-bottom:0;}
+    .story-block strong{color:var(--gold);font-weight:600;}
+    .story-block em{color:var(--cyan);font-style:normal;font-weight:600;}
+    .story-hl{color:var(--cyan);font-weight:600;font-size:.92rem;margin-top:.8rem!important;}
+
+    .objs{display:flex;flex-wrap:wrap;gap:.45rem;}
+    .obj{font-size:.7rem;letter-spacing:.06em;padding:.28rem .75rem;background:rgba(0,245,160,.06);border:1px solid rgba(0,245,160,.22);color:var(--green);border-radius:2px;}
+    .obj::before{content:'✓ ';}
+
+    .rules-block{background:rgba(242,201,76,.04);border:1px solid rgba(242,201,76,.13);padding:.85rem 1.1rem;font-size:.78rem;color:var(--dim);line-height:1.72;}
+    .rules-block strong{color:var(--gold);}
+
+    .card-foot{padding:1.1rem 1.8rem 1.5rem;}
+    .btn-accept{width:100%;font-family:'Orbitron',monospace;font-size:.88rem;letter-spacing:.2em;padding:1rem 2rem;background:var(--gold);border:none;color:#0D0D1A;cursor:pointer;position:relative;overflow:hidden;transition:all .3s;display:flex;align-items:center;justify-content:center;gap:.6rem;}
+    .btn-accept::before{content:'';position:absolute;inset:0;background:rgba(255,255,255,.18);transform:translateX(-101%);transition:transform .35s;}
+    .btn-accept:hover::before{transform:translateX(0);}
+    .btn-accept:hover{box-shadow:0 0 32px rgba(242,201,76,.45);}
+    .btn-accept:active{transform:scale(.98);}
+    .bolt{animation:boltPulse 1.6s ease-in-out infinite;}
+    @keyframes boltPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+
+    /* ── Toast ── */
+    .toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:500;background:var(--panel);border:1px solid var(--green);padding:.75rem 1.1rem;font-size:.8rem;color:var(--green);transform:translateY(80px);opacity:0;transition:all .4s;border-radius:2px;max-width:280px;}
+    .toast.show{transform:none;opacity:1;}
+
+    /* ── Responsive ── */
+    @media(max-width:680px){
+      .mission-layout{flex-direction:column;align-items:center;}
+      .vera-panel{width:160px;flex-direction:row;flex-wrap:wrap;justify-content:center;}
+      .vera-wrap{width:140px;height:200px;}
+      .vera-bubble{font-size:.73rem;}
+      .card-head,.card-body,.card-foot{padding-left:1.2rem;padding-right:1.2rem;}
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+
+<div class="top-bar">
+  <div class="bar-logo">AXIOM</div>
+  <div class="bar-right">
+    <button class="icon-btn on" id="btnMusic" onclick="toggleMusic()" title="Música ambiental">🎵</button>
+    <button class="icon-btn on" id="btnSFX"   onclick="toggleSFX()"   title="Efectos de sonido">🔊</button>
+    <button class="icon-btn"                   onclick="toggleTheme()" title="Modo claro/oscuro">🌙</button>
+    <button class="icon-btn"                   onclick="exitGame()"    title="Salir">← Salir</button>
+  </div>
+</div>
+
+<div class="scene">
+  <div class="mission-layout">
+
+    <!-- VERA hologram -->
+    <div class="vera-panel">
+      <div class="vera-wrap">
+        <svg class="vera-fig" viewBox="0 0 200 320" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="vSkin" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#A8DCEE"/><stop offset="100%" stop-color="#6ABED8"/></linearGradient>
+            <linearGradient id="vSuit" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0C3850"/><stop offset="100%" stop-color="#041520"/></linearGradient>
+            <linearGradient id="vHair" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#003850"/><stop offset="100%" stop-color="#001520"/></linearGradient>
+            <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <filter id="glows"><feGaussianBlur stdDeviation="1.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <pattern id="scan" width="1" height="4" patternUnits="userSpaceOnUse"><rect width="1" height="2" fill="rgba(0,212,255,0.05)"/></pattern>
+          </defs>
+
+          <!-- Body suit -->
+          <path d="M48 320 Q48 228 58 210 Q72 196 100 192 Q128 196 142 210 Q152 228 152 320Z" fill="url(#vSuit)"/>
+          <!-- Suit shoulder lines -->
+          <path d="M58 210 Q48 225 42 260 L56 258 Q58 235 68 220Z" fill="#0D3A52" stroke="rgba(0,212,255,.35)" stroke-width=".8"/>
+          <path d="M142 210 Q152 225 158 260 L144 258 Q142 235 132 220Z" fill="#0D3A52" stroke="rgba(0,212,255,.35)" stroke-width=".8"/>
+          <!-- Suit neon collar V -->
+          <path d="M70 212 L100 228 L130 212" stroke="#00D4FF" stroke-width="1.8" fill="none" stroke-linecap="round" filter="url(#glows)"/>
+          <!-- Vertical suit lines -->
+          <line x1="84" y1="228" x2="84" y2="320" stroke="#00D4FF" stroke-width=".7" opacity=".28"/>
+          <line x1="116" y1="228" x2="116" y2="320" stroke="#00D4FF" stroke-width=".7" opacity=".28"/>
+          <!-- Chest badge -->
+          <rect x="80" y="240" width="40" height="22" rx="3" fill="#04111E" stroke="#00D4FF" stroke-width="1.1"/>
+          <text x="100" y="249" text-anchor="middle" font-size="5.5" fill="#00D4FF" font-family="monospace">V.E.R.A</text>
+          <text x="100" y="257" text-anchor="middle" font-size="4" fill="#00F5A0" font-family="monospace">ONLINE</text>
+          <circle cx="112" cy="252" r="2.2" fill="#00F5A0" opacity=".9" filter="url(#glows)"/>
+          <!-- Arm cuffs -->
+          <ellipse cx="45" cy="260" rx="9" ry="4.5" fill="none" stroke="#00D4FF" stroke-width="1.3" filter="url(#glows)"/>
+          <ellipse cx="155" cy="260" rx="9" ry="4.5" fill="none" stroke="#00D4FF" stroke-width="1.3" filter="url(#glows)"/>
+          <!-- Holographic tablet -->
+          <rect x="16" y="264" width="34" height="24" rx="3" fill="#030E1A" stroke="#00D4FF" stroke-width="1.1"/>
+          <line x1="20" y1="270" x2="46" y2="270" stroke="#00D4FF" stroke-width=".65" opacity=".5"/>
+          <line x1="20" y1="274" x2="44" y2="274" stroke="#00D4FF" stroke-width=".65" opacity=".4"/>
+          <line x1="20" y1="278" x2="46" y2="278" stroke="#00D4FF" stroke-width=".65" opacity=".5"/>
+          <line x1="20" y1="282" x2="42" y2="282" stroke="#00D4FF" stroke-width=".65" opacity=".3"/>
+          <circle cx="44" cy="283" r="2" fill="#F2C94C" opacity=".8" filter="url(#glows)"/>
+
+          <!-- Neck -->
+          <rect x="88" y="188" width="24" height="10" rx="5" fill="url(#vSkin)"/>
+
+          <!-- Head -->
+          <ellipse cx="100" cy="142" rx="40" ry="42" fill="url(#vSkin)"/>
+
+          <!-- Hair -->
+          <path d="M60 130 Q60 96 100 92 Q140 96 140 130 Q138 106 126 98 Q114 92 100 92 Q86 92 74 98 Q62 106 60 130Z" fill="url(#vHair)"/>
+          <path d="M60 130 Q56 142 58 156 Q61 150 63 146 Q61 138 60 130Z" fill="url(#vHair)"/>
+          <path d="M140 130 Q144 142 142 156 Q139 150 137 146 Q139 138 140 130Z" fill="url(#vHair)"/>
+          <path d="M74 98 Q100 90 126 98" stroke="#00D4FF" stroke-width="1.5" fill="none" opacity=".45" filter="url(#glows)"/>
+          <!-- Hair holographic streak -->
+          <path d="M62 118 Q60 128 62 140" stroke="#00D4FF" stroke-width="2" fill="none" opacity=".4" stroke-linecap="round"/>
+
+          <!-- Eyes — glowing AI cyan -->
+          <ellipse cx="82" cy="140" rx="10" ry="8.5" fill="#001525"/>
+          <ellipse cx="118" cy="140" rx="10" ry="8.5" fill="#001525"/>
+          <circle cx="82" cy="140" r="6" fill="#00D4FF" opacity=".25"/>
+          <circle cx="118" cy="140" r="6" fill="#00D4FF" opacity=".25"/>
+          <circle cx="82" cy="140" r="4" fill="#00D4FF" opacity=".85"/>
+          <circle cx="118" cy="140" r="4" fill="#00D4FF" opacity=".85"/>
+          <circle cx="84" cy="138" r="1.8" fill="white" opacity=".85"/>
+          <circle cx="120" cy="138" r="1.8" fill="white" opacity=".85"/>
+          <circle cx="82" cy="140" r="9" fill="none" stroke="#00D4FF" stroke-width=".8" opacity=".35" filter="url(#glows)"/>
+          <circle cx="118" cy="140" r="9" fill="none" stroke="#00D4FF" stroke-width=".8" opacity=".35" filter="url(#glows)"/>
+
+          <!-- Eyebrows -->
+          <path d="M70 129 Q82 125 94 129" stroke="#002535" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+          <path d="M106 129 Q118 125 130 129" stroke="#002535" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+
+          <!-- Nose -->
+          <path d="M97 150 Q100 156 103 150" stroke="#6AB0C8" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+
+          <!-- Lips -->
+          <path d="M84 163 Q100 169 116 163" stroke="#009AC0" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <path d="M86 163 Q100 165.5 114 163" stroke="#00D4FF" stroke-width=".9" fill="none" opacity=".45"/>
+
+          <!-- Cheek highlights -->
+          <ellipse cx="68" cy="152" rx="9" ry="5.5" fill="rgba(0,212,255,0.07)" filter="url(#glows)"/>
+          <ellipse cx="132" cy="152" rx="9" ry="5.5" fill="rgba(0,212,255,0.07)" filter="url(#glows)"/>
+
+          <!-- Ear implants -->
+          <circle cx="58" cy="144" r="5.5" fill="#001525" stroke="#00D4FF" stroke-width="1.1"/>
+          <circle cx="58" cy="144" r="2.8" fill="#00D4FF" opacity=".65"/>
+          <circle cx="142" cy="144" r="5.5" fill="#001525" stroke="#00D4FF" stroke-width="1.1"/>
+          <circle cx="142" cy="144" r="2.8" fill="#00D4FF" opacity=".65"/>
+
+          <!-- Orbit rings -->
+          <ellipse cx="100" cy="142" rx="50" ry="9" fill="none" stroke="#00D4FF" stroke-width=".5" opacity=".2" transform="rotate(-18 100 142)"/>
+          <ellipse cx="100" cy="142" rx="54" ry="7" fill="none" stroke="#00D4FF" stroke-width=".35" opacity=".13" transform="rotate(14 100 142)"/>
+
+          <!-- Scan overlay -->
+          <rect x="0" y="0" width="200" height="320" fill="url(#scan)" opacity=".6"/>
+        </svg>
+      </div>
+      <div class="vera-name">V.E.R.A</div>
+      <div class="vera-dot">IA en línea</div>
+      <div class="vera-bubble">
+        <span id="veraTW"></span><span class="tw-cursor" id="veraCursor"></span>
+      </div>
+    </div>
+
+    <!-- Mission card -->
+    <div class="mission-card">
+      <div class="card-head">
+        <div class="m-title">
+          <span>📋</span>
+          <span>Tu Misión, <span id="mName">Analista</span></span>
+          <span class="m-badge" id="mBadge">MÓDULO 0</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="story-block" id="storyEl"></div>
+        <div class="objs" id="objsEl"></div>
+        <div class="rules-block" id="rulesEl"></div>
+      </div>
+      <div class="card-foot">
+        <button class="btn-accept" id="btnAccept" onclick="acceptMission()">
+          <span class="bolt">⚡</span>
+          <span id="acceptLbl">¡ACEPTO LA MISIÓN!</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   AXIOM GAME ENGINE — Audio + Mission + VERA
+═══════════════════════════════════════════════════ */
+
+// ─── State ────────────────────────────────────────
+const uid    = new URLSearchParams(location.search).get('u');
+const getU   = () => (JSON.parse(localStorage.getItem('axiom_users')||'[]')).find(u=>u.id===uid)||null;
+let musicOn  = true;
+let sfxOn    = true;
+let audioCtx = null;
+let mNodes   = {};
+let twTimer  = null;
+
+// ─── Module content ───────────────────────────────
+const MISSIONS = {
+  0: {
+    badge: 'MÓDULO 0 — EL DESPERTAR',
+    vera:  'Recluta. Llevas 47 días de retraso. No hay tiempo para café. Bienvenido a AXIOM.',
+    story: `<p>Eres el nuevo <strong>Analista JR de Sistemas</strong> en <em>AXIOM Motors GDL</em>.</p>
+            <p>Tu primera semana debería haber sido inducción, presentaciones y café con el equipo.</p>
+            <p>Pero <strong>The Void</strong> llegó primero.</p>
+            <p>Roberto, el Gerente Regional, lleva <strong>47 horas sin poder ver un solo dato</strong>. Los reportes de ventas, inventario y finanzas están corrompidos.</p>
+            <p class="story-hl">Cada fórmula que escribas correctamente restaura un nodo del sistema.</p>`,
+    objs:  ['Entender qué es DAX','Lógica IF y operadores','SUMX — iterar datos','Variables VAR'],
+    rules: `<strong>⚡ Reglas del protocolo:</strong> No puedes avanzar sin completar el ejercicio anterior. Si te atascas, recibirás pistas progresivas de VERA. Nadie aprende DAX leyendo — lo aprenden haciendo.`
+  },
+  1: {
+    badge: 'MÓDULO 1 — LOS CIMIENTOS',
+    vera:  'El modelo está roto. Sin estructura, ninguna fórmula tiene sentido. Vamos a reconstruirlo.',
+    story: `<p>Los datos llegaron... pero sin orden.</p>
+            <p>La <strong>base de AXIOM Motors</strong> tiene tablas mezcladas, relaciones rotas y un calendario inexistente.</p>
+            <p>El equipo de BI está paralizado. <strong>Sin un modelo estrella correcto</strong>, ningún reporte funciona.</p>
+            <p class="story-hl">Tu misión: reconstruir los cimientos de datos de la ciudad.</p>`,
+    objs:  ['Modelo estrella ⭐','Hechos vs Dimensiones','Relaciones uno a muchos','Tabla Calendario'],
+    rules: `<strong>⚡ Reglas del protocolo:</strong> El modelo es el corazón de DAX. Si el modelo falla, todo falla. Domina esto antes de continuar.`
+  }
+};
+
+// ─── Audio Engine ─────────────────────────────────
+function getAC(){
+  if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function startMusic(){
+  if(!musicOn) return;
+  stopMusic();
+  try{
+    const ac=getAC();
+    const master=ac.createGain(); master.gain.value=.055; master.connect(ac.destination);
+
+    // Sub drone
+    const drone=ac.createOscillator(); drone.type='sawtooth'; drone.frequency.value=55;
+    const dFilt=ac.createBiquadFilter(); dFilt.type='lowpass'; dFilt.frequency.value=110;
+    const dGain=ac.createGain(); dGain.gain.value=.45;
+    drone.connect(dFilt); dFilt.connect(dGain); dGain.connect(master); drone.start();
+
+    // LFO pulse on drone
+    const lfo=ac.createOscillator(); lfo.frequency.value=.38;
+    const lGain=ac.createGain(); lGain.gain.value=14;
+    lfo.connect(lGain); lGain.connect(drone.frequency); lfo.start();
+
+    // Mid pads
+    [110,165,220,277].forEach((f,i)=>{
+      const o=ac.createOscillator(); o.type='triangle'; o.frequency.value=f;
+      const g=ac.createGain(); g.gain.value=.14-i*.022;
+      const bf=ac.createBiquadFilter(); bf.type='bandpass'; bf.frequency.value=f*1.6; bf.Q.value=2.5;
+      o.connect(bf); bf.connect(g); g.connect(master); o.start();
+      mNodes['pad'+i]=o;
+    });
+
+    // Hi shimmer arpeggio
+    const hFreqs=[880,1108,1320,1760]; let hs=0;
+    mNodes.shim=setInterval(()=>{
+      if(!musicOn) return;
+      try{
+        const o=ac.createOscillator(); o.type='sine'; o.frequency.value=hFreqs[hs%hFreqs.length];
+        const g=ac.createGain();
+        g.gain.setValueAtTime(.013,ac.currentTime);
+        g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+.38);
+        o.connect(g); g.connect(master); o.start(); o.stop(ac.currentTime+.4);
+        hs++;
+      }catch(e){}
+    },440);
+
+    // Kick pulse
+    mNodes.kick=setInterval(()=>{
+      if(!musicOn) return;
+      try{
+        const o=ac.createOscillator(); o.type='sine';
+        o.frequency.setValueAtTime(115,ac.currentTime);
+        o.frequency.exponentialRampToValueAtTime(38,ac.currentTime+.18);
+        const g=ac.createGain();
+        g.gain.setValueAtTime(.48,ac.currentTime);
+        g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.22);
+        o.connect(g); g.connect(master); o.start(); o.stop(ac.currentTime+.24);
+      }catch(e){}
+    },820);
+
+    mNodes.drone=drone; mNodes.lfo=lfo; mNodes.master=master;
+  }catch(e){ console.warn('Audio:',e); }
+}
+
+function stopMusic(){
+  try{
+    clearInterval(mNodes.shim); clearInterval(mNodes.kick);
+    ['drone','lfo','pad0','pad1','pad2','pad3'].forEach(k=>{ try{mNodes[k]?.stop();}catch(e){} });
+    mNodes={};
+  }catch(e){}
+}
+
+function sfx(type){
+  if(!sfxOn) return;
+  try{
+    const ac=getAC();
+    const master=ac.createGain(); master.connect(ac.destination);
+    if(type==='correct'){
+      [523,659,784].forEach((f,i)=>{
+        const o=ac.createOscillator(); o.type='sine'; o.frequency.value=f;
+        const g=ac.createGain();
+        g.gain.setValueAtTime(.0001,ac.currentTime+i*.12);
+        g.gain.linearRampToValueAtTime(.18,ac.currentTime+i*.12+.05);
+        g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+i*.12+.4);
+        o.connect(g); g.connect(master);
+        o.start(ac.currentTime+i*.12); o.stop(ac.currentTime+i*.12+.45);
+      });
+    } else if(type==='wrong'){
+      const o=ac.createOscillator(); o.type='sawtooth';
+      o.frequency.setValueAtTime(220,ac.currentTime);
+      o.frequency.exponentialRampToValueAtTime(75,ac.currentTime+.22);
+      const g=ac.createGain();
+      g.gain.setValueAtTime(.12,ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.25);
+      o.connect(g); g.connect(master); o.start(); o.stop(ac.currentTime+.28);
+    } else if(type==='levelup'){
+      [523,659,784,1047].forEach((f,i)=>{
+        const o=ac.createOscillator(); o.type='triangle'; o.frequency.value=f;
+        const g=ac.createGain();
+        g.gain.setValueAtTime(.0001,ac.currentTime+i*.1);
+        g.gain.linearRampToValueAtTime(.22,ac.currentTime+i*.1+.08);
+        g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+i*.1+.65);
+        o.connect(g); g.connect(master);
+        o.start(ac.currentTime+i*.1); o.stop(ac.currentTime+i*.1+.7);
+      });
+    } else if(type==='accept'){
+      [262,330,392,523,659,784].forEach((f,i)=>{
+        const o=ac.createOscillator(); o.type='triangle'; o.frequency.value=f;
+        const g=ac.createGain();
+        g.gain.setValueAtTime(.0001,ac.currentTime+i*.065);
+        g.gain.linearRampToValueAtTime(.2,ac.currentTime+i*.065+.055);
+        g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+i*.065+.55);
+        o.connect(g); g.connect(master);
+        o.start(ac.currentTime+i*.065); o.stop(ac.currentTime+i*.065+.6);
+      });
+    } else if(type==='click'){
+      const o=ac.createOscillator(); o.type='square'; o.frequency.value=750;
+      const g=ac.createGain();
+      g.gain.setValueAtTime(.04,ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.05);
+      o.connect(g); g.connect(master); o.start(); o.stop(ac.currentTime+.06);
+    }
+  }catch(e){}
+}
+
+function toggleMusic(){
+  musicOn=!musicOn;
+  document.getElementById('btnMusic').classList.toggle('on',musicOn);
+  musicOn ? startMusic() : stopMusic();
+  sfx('click');
+}
+function toggleSFX(){
+  sfxOn=!sfxOn;
+  document.getElementById('btnSFX').classList.toggle('on',sfxOn);
+  sfx('click');
+}
+
+// ─── Typewriter ───────────────────────────────────
+function typewrite(id, text, speed, done){
+  clearTimeout(twTimer);
+  const el=document.getElementById(id);
+  const cur=document.getElementById('veraCursor');
+  if(cur) cur.style.display='inline-block';
+  let i=0; el.textContent='';
+  function next(){
+    if(i<text.length){ el.textContent+=text[i++]; twTimer=setTimeout(next,speed||36); }
+    else{ if(cur) cur.style.display='none'; if(done) done(); }
+  }
+  next();
+}
+
+// ─── Mission load ─────────────────────────────────
+function loadMission(mod){
+  const u=getU();
+  const m=MISSIONS[mod]||MISSIONS[0];
+  document.getElementById('mName').textContent  = u?.name||'Analista';
+  document.getElementById('mBadge').textContent = m.badge;
+  document.getElementById('storyEl').innerHTML  = m.story;
+  document.getElementById('objsEl').innerHTML   = m.objs.map(o=>`<div class="obj">${o}</div>`).join('');
+  document.getElementById('rulesEl').innerHTML  = m.rules;
+  setTimeout(()=>typewrite('veraTW', m.vera, 34), 1000);
+}
+
+// ─── Accept mission ───────────────────────────────
+function acceptMission(){
+  sfx('accept');
+  const btn=document.getElementById('btnAccept');
+  btn.style.opacity='.55'; btn.style.pointerEvents='none';
+  document.getElementById('acceptLbl').textContent='INICIANDO MÓDULO...';
+  toast('🚀 Módulo 0 iniciado — ¡Buena suerte, Analista!');
+  setTimeout(()=>{
+    // FASE 3: irá a module0.html
+    toast('🏗️ Motor de ejercicios en construcción — FASE 3');
+    btn.style.opacity='1'; btn.style.pointerEvents='all';
+    document.getElementById('acceptLbl').textContent='¡ACEPTO LA MISIÓN!';
+  }, 2200);
+}
+
+// ─── Toast ────────────────────────────────────────
+function toast(msg,dur=3200){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+// ─── Theme / Exit ─────────────────────────────────
+function toggleTheme(){ document.body.classList.toggle('light'); sfx('click'); }
+function exitGame(){ sfx('click'); location.href='index.html'; }
+
+// ─── Particles ────────────────────────────────────
+const cv=document.getElementById('bg'), cx=cv.getContext('2d');
+let pts=[];
+function resize(){ cv.width=innerWidth; cv.height=innerHeight; initPts(); }
+function initPts(){
+  pts=[];
+  for(let i=0;i<80;i++) pts.push({x:Math.random()*cv.width,y:Math.random()*cv.height,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,r:Math.random()*1.3+.5,a:Math.random()*.4+.1});
+}
+function drawBg(){
+  cx.clearRect(0,0,cv.width,cv.height);
+  cx.strokeStyle='rgba(0,212,255,.04)'; cx.lineWidth=1;
+  for(let x=0;x<cv.width;x+=70){ cx.beginPath(); cx.moveTo(x,0); cx.lineTo(x,cv.height); cx.stroke(); }
+  for(let y=0;y<cv.height;y+=70){ cx.beginPath(); cx.moveTo(0,y); cx.lineTo(cv.width,y); cx.stroke(); }
+  pts.forEach((p,i)=>{
+    pts.slice(i+1).forEach(q=>{ const d=Math.hypot(p.x-q.x,p.y-q.y); if(d<120){ cx.beginPath(); cx.strokeStyle=`rgba(0,212,255,${.07*(1-d/120)})`; cx.moveTo(p.x,p.y); cx.lineTo(q.x,q.y); cx.stroke(); } });
+    cx.beginPath(); cx.arc(p.x,p.y,p.r,0,Math.PI*2); cx.fillStyle=`rgba(242,201,76,${p.a})`; cx.fill();
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<0||p.x>cv.width) p.vx*=-1;
+    if(p.y<0||p.y>cv.height) p.vy*=-1;
+  });
+  requestAnimationFrame(drawBg);
+}
+
+// ─── Boot ─────────────────────────────────────────
+addEventListener('resize',resize);
+resize(); drawBg();
+
+if(!uid||!getU()){ location.href='index.html'; }
+else {
+  loadMission(getU()?.currentModule||0);
+  // Audio starts on first user interaction (browser policy)
+  document.addEventListener('click',function boot(){
+    startMusic();
+    document.removeEventListener('click',boot);
+  },{once:true});
+}
+</script>
+</body>
+</html>
