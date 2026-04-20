@@ -1148,7 +1148,9 @@ let veraLineIdx=0, veraCharIdx=0, veraTimer=null;
 function showMission(user) {
   document.getElementById('missionName').textContent = user.name;
   document.getElementById('missionStory').innerHTML = MODULE0_STORY;
-  document.getElementById('veraBust').innerHTML = document.getElementById('svgVERA').innerHTML;
+  // Usar el avatar del usuario en lugar de svgVERA inexistente
+  const bust = document.getElementById('veraBust');
+  if (bust) bust.innerHTML = avatarSVG(user.avatar) || '';
   veraLineIdx=0; veraCharIdx=0;
   typeVera();
   show('sMission');
