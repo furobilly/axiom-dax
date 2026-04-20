@@ -444,13 +444,12 @@ function acceptMission(){
   const btn=document.getElementById('btnAccept');
   btn.style.opacity='.55'; btn.style.pointerEvents='none';
   document.getElementById('acceptLbl').textContent='INICIANDO MÓDULO...';
-  toast('🚀 Módulo 0 iniciado — ¡Buena suerte, Analista!');
+  toast('🚀 Módulo 0 — El Despertar. ¡Buena suerte, Analista!');
   setTimeout(()=>{
-    // FASE 3: irá a module0.html
-    toast('🏗️ Motor de ejercicios en construcción — FASE 3');
-    btn.style.opacity='1'; btn.style.pointerEvents='all';
-    document.getElementById('acceptLbl').textContent='¡ACEPTO LA MISIÓN!';
-  }, 2200);
+    document.body.style.transition='opacity .8s';
+    document.body.style.opacity='0';
+    setTimeout(()=>{ location.href=`module0.html?u=${uid}`; }, 800);
+  }, 1200);
 }
 
 // ─── Toast ────────────────────────────────────────
